@@ -29,6 +29,36 @@ def register_developer(request):
             })
             
             if auth_response.user:
+                user_id = auth_response.user.id
+                
+                # Create developer profile in Supabase
+                developer_profile_data = {
+                    'user_id': user_id,
+                    'title': data.get('title', 'Developer'),
+                    'bio': data.get('bio', ''),
+                    'hourly_rate': float(data.get('hourlyRate', 25)) if data.get('hourlyRate') else 25.00,
+                    'skills': data.get('skills', 'JavaScript,HTML,CSS'),
+                    'experience': data.get('experience', 'entry'),
+                    'years_experience': int(data.get('yearsExperience', 0)) if data.get('yearsExperience') else 0,
+                    'portfolio': data.get('portfolio', ''),
+                    'github': data.get('github', ''),
+                    'linkedin': data.get('linkedin', ''),
+                    'education': data.get('education', ''),
+                    'languages': data.get('languages', 'English'),
+                    'availability': data.get('availability', 'full-time'),
+                    'rating': 0.00,
+                    'total_reviews': 0,
+                    'total_projects': 0,
+                    'completed_projects': 0,
+                    'total_earnings': 0.00,
+                    'success_rate': 0.00,
+                }
+                
+                try:
+                    supabase.table('accounts_developerprofile').insert(developer_profile_data).execute()
+                except Exception as e:
+                    print(f"Warning: Could not create developer profile: {str(e)}")
+                
                 return JsonResponse({
                     'message': 'Developer registered successfully',
                     'user': {
@@ -76,6 +106,26 @@ def register_company(request):
             })
             
             if auth_response.user:
+                user_id = auth_response.user.id
+                
+                # Create company profile in Supabase
+                company_profile_data = {
+                    'user_id': user_id,
+                    'company_name': data.get('companyName', ''),
+                    'company_size': data.get('companySize', '1-10'),
+                    'industry': data.get('industry', ''),
+                    'website': data.get('website', ''),
+                    'description': data.get('description', ''),
+                    'founded_year': int(data.get('foundedYear', 2026)) if data.get('foundedYear') else 2026,
+                    'company_type': data.get('companyType', 'startup'),
+                    'is_verified': False,
+                }
+                
+                try:
+                    supabase.table('accounts_companyprofile').insert(company_profile_data).execute()
+                except Exception as e:
+                    print(f"Warning: Could not create company profile: {str(e)}")
+                
                 return JsonResponse({
                     'message': 'Company registered successfully',
                     'user': {
@@ -201,28 +251,41 @@ def get_user_profile(request):
 @csrf_exempt
 def get_projects(request):
     if request.method == 'GET':
-        # Mock data for now
-        projects = [
-            {
-                'id': 1,
-                'title': 'E-commerce Website Development',
-                'description': 'Build a modern e-commerce platform with React and Node.js',
-                'budget': '$2000-$5000',
-                'skills': ['React', 'Node.js', 'MongoDB'],
-                'posted_date': '2 days ago',
-                'company': 'TechCorp Inc.'
-            },
-            {
-                'id': 2,
-                'title': 'Mobile App UI/UX Design',
-                'description': 'Design user interface for a fitness tracking mobile application',
-                'budget': '$1500-$3000',
-                'skills': ['UI/UX', 'Figma', 'Mobile Design'],
-                'posted_date': '1 week ago',
-                'company': 'FitLife Solutions'
-            }
-        ]
-        return JsonResponse({'projects': projects})
+        try:
+            supabase = get_supabase_client()
+            
+            # Get all projects from Supabase
+            result = supabase.table('projects_project').select('*').execute()
+            
+            print(f"Total projects from Supabase: {len(result.data)}")
+            
+            projects = []
+            for project in result.data:
+                print(f"  - {project.get('title')} (status: {project.get('status')})")
+                
+                # Filter out draft and cancelled projects
+                if project.get('status') not in ['draft', 'cancelled']:
+                    projects.append({
+                        'id': project.get('id'),
+                        'title': project.get('title'),
+                        'description': project.get('description'),
+                        'budget_min': float(project.get('budget_min', 0)) if project.get('budget_min') else 0,
+                        'budget_max': float(project.get('budget_max', 0)) if project.get('budget_max') else 0,
+                        'category': project.get('category', ''),
+                        'complexity': project.get('complexity', ''),
+                        'tech_stack': project.get('tech_stack', []),
+                        'estimated_duration': project.get('estimated_duration', ''),
+                        'created_at': project.get('created_at', ''),
+                        'company': project.get('company_name', 'Company')
+                    })
+            
+            print(f"Returning {len(projects)} visible projects")
+            return JsonResponse({'projects': projects})
+        except Exception as e:
+            print(f"Get projects error: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'projects': [], 'error': str(e)})
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 
@@ -242,13 +305,46 @@ def get_company_projects(request):
             if not user_response.user:
                 return JsonResponse({'error': 'Invalid token'}, status=401)
             
-            # Get all projects for now (since we don't have company_id relationship)
-            projects_result = supabase.table('projects_project').select('*').execute()
-            
-            return JsonResponse({'projects': projects_result.data})
+            # Get user from Django database by email
+            from accounts.models import User
+            try:
+                user = User.objects.get(email=user_response.user.email)
+                
+                # Get all projects for this company
+                from projects.models import Project
+                projects_queryset = Project.objects.filter(
+                    company=user
+                ).values(
+                    'id', 'title', 'description', 'budget_min', 'budget_max',
+                    'category', 'complexity', 'tech_stack', 'estimated_duration',
+                    'status', 'created_at', 'applications_count'
+                )
+                
+                projects = []
+                for project in projects_queryset:
+                    projects.append({
+                        'id': project['id'],
+                        'title': project['title'],
+                        'description': project['description'],
+                        'budget_min': float(project['budget_min']) if project['budget_min'] else 0,
+                        'budget_max': float(project['budget_max']) if project['budget_max'] else 0,
+                        'category': project['category'],
+                        'complexity': project['complexity'],
+                        'tech_stack': project['tech_stack'] if isinstance(project['tech_stack'], list) else [],
+                        'estimated_duration': project['estimated_duration'],
+                        'status': project['status'],
+                        'created_at': project['created_at'].isoformat() if project['created_at'] else '',
+                        'applications_count': project['applications_count']
+                    })
+                
+                return JsonResponse({'projects': projects})
+            except User.DoesNotExist:
+                return JsonResponse({'error': 'User not found'}, status=404)
             
         except Exception as e:
-            print(f"Get projects error: {str(e)}")
+            print(f"Get company projects error: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return JsonResponse({'error': str(e)}, status=500)
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -257,22 +353,38 @@ def get_company_projects(request):
 def edit_project(request, project_id):
     if request.method == 'GET':
         try:
-            supabase = get_supabase_client()
-            result = supabase.table('projects_project').select('*').eq('id', project_id).execute()
+            from projects.models import Project
             
-            if result.data:
-                return JsonResponse({'project': result.data[0]})
-            return JsonResponse({'error': 'Project not found'}, status=404)
+            project = Project.objects.get(id=project_id)
+            
+            return JsonResponse({
+                'project': {
+                    'id': project.id,
+                    'title': project.title,
+                    'description': project.description,
+                    'category': project.category,
+                    'complexity': project.complexity,
+                    'budget_min': float(project.budget_min) if project.budget_min else 0,
+                    'budget_max': float(project.budget_max) if project.budget_max else 0,
+                    'estimated_duration': project.estimated_duration,
+                    'tech_stack': project.tech_stack,
+                    'status': project.status,
+                    'created_at': project.created_at.isoformat()
+                }
+            })
             
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+            print(f"Get project error: {str(e)}")
+            return JsonResponse({'error': 'Project not found'}, status=404)
     
     elif request.method == 'PUT':
         try:
             data = json.loads(request.body)
-            supabase = get_supabase_client()
+            from projects.models import Project
             
-            # Map form data like in create_project
+            project = Project.objects.get(id=project_id)
+            
+            # Map categories
             category_map = {
                 'web-development': 'web',
                 'mobile-development': 'mobile',
@@ -282,35 +394,50 @@ def edit_project(request, project_id):
                 'full-stack-development': 'fullstack'
             }
             
+            # Map complexity levels
             complexity_map = {
                 'entry': 'simple',
                 'intermediate': 'medium', 
                 'expert': 'complex'
             }
             
-            budget_amount = int(data['budget']) if data['budget'].isdigit() else 1000
+            budget_amount = int(data.get('budget', 1000))
             
-            update_data = {
-                'title': data['title'],
-                'description': data['description'],
-                'category': category_map.get(data['category'], 'other'),
-                'complexity': complexity_map.get(data['experience'], 'simple'),
-                'budget_min': budget_amount,
-                'budget_max': budget_amount * 1.5,
-                'estimated_duration': f"{data['timeline']} weeks",
-                'tech_stack': data['skills'].split(),
-                'updated_at': 'NOW()'
-            }
+            # Update project
+            project.title = data.get('title', project.title)
+            project.description = data.get('description', project.description)
+            project.category = category_map.get(data.get('category'), project.category)
+            project.complexity = complexity_map.get(data.get('experience'), project.complexity)
+            project.budget_min = budget_amount
+            project.budget_max = budget_amount * 1.5
+            project.estimated_duration = f"{data.get('timeline', '4')} weeks"
+            project.tech_stack = data.get('skills', '').split(',') if isinstance(data.get('skills'), str) else data.get('skills', [])
+            project.save()
             
-            result = supabase.table('projects_project').update(update_data).eq('id', project_id).execute()
-            
-            return JsonResponse({'message': 'Project updated successfully', 'project': result.data[0] if result.data else update_data})
+            return JsonResponse({
+                'message': 'Project updated successfully',
+                'project': {
+                    'id': project.id,
+                    'title': project.title,
+                    'description': project.description,
+                    'category': project.category,
+                    'complexity': project.complexity,
+                    'budget_min': float(project.budget_min),
+                    'budget_max': float(project.budget_max),
+                    'status': project.status,
+                    'created_at': project.created_at.isoformat()
+                }
+            })
             
         except Exception as e:
+            print(f"Update project error: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return JsonResponse({'error': str(e)}, status=500)
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 
+@csrf_exempt
 @csrf_exempt
 def apply_to_project(request, project_id):
     if request.method == 'POST':
@@ -328,24 +455,32 @@ def apply_to_project(request, project_id):
             if not user_response.user:
                 return JsonResponse({'error': 'Invalid token'}, status=401)
             
-            # Calculate ML matching score (placeholder for now)
-            matching_score = 85.5  # Will be replaced with actual ML model
+            developer_id = user_response.user.id
             
+            # Create application in projects_projectapplication table
             application_data = {
                 'project_id': project_id,
-                'developer_email': user_response.user.email,
+                'developer_id': developer_id,
                 'cover_letter': data.get('coverLetter', ''),
-                'proposed_budget': int(data.get('proposedBudget', 0)),
-                'estimated_timeline': data.get('timeline', ''),
-                'matching_score': matching_score,
+                'proposed_rate': float(data.get('proposedBudget', 0)) if data.get('proposedBudget') else None,
+                'estimated_duration': data.get('timeline', ''),
                 'status': 'pending'
             }
             
-            result = supabase.table('applications').insert(application_data).execute()
+            result = supabase.table('projects_projectapplication').insert(application_data).execute()
             
-            return JsonResponse({'message': 'Application submitted successfully', 'application': result.data[0] if result.data else application_data})
+            if result.data:
+                return JsonResponse({
+                    'message': 'Application submitted successfully',
+                    'application': result.data[0]
+                })
+            else:
+                return JsonResponse({'error': 'Failed to submit application'}, status=500)
             
         except Exception as e:
+            print(f"Apply to project error: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return JsonResponse({'error': str(e)}, status=500)
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -411,6 +546,7 @@ def test_endpoint(request):
     return JsonResponse({'message': 'Test endpoint working', 'method': request.method})
 
 @csrf_exempt
+@csrf_exempt
 def create_project(request):
     if request.method == 'POST':
         try:
@@ -427,6 +563,8 @@ def create_project(request):
             user_response = supabase.auth.get_user(token)
             if not user_response.user:
                 return JsonResponse({'error': 'Invalid token'}, status=401)
+            
+            from datetime import datetime, timedelta
             
             # Map categories to match database constraints
             category_map = {
@@ -445,31 +583,69 @@ def create_project(request):
                 'expert': 'complex'
             }
             
-            budget_amount = int(data['budget']) if data['budget'].isdigit() else 1000
+            budget_amount = int(data.get('budget', 1000))
             
+            # Parse dates
+            start_date = datetime.now().date().isoformat()
+            deadline = (datetime.now() + timedelta(days=30)).date().isoformat()
+            
+            # Create project in Supabase
             project_data = {
-                'title': data['title'],
-                'description': data['description'],
-                'category': category_map.get(data['category'], 'other'),
-                'complexity': complexity_map.get(data['experience'], 'simple'),
+                'company_id': user_response.user.id,
+                'title': data.get('title', ''),
+                'description': data.get('description', ''),
+                'category': category_map.get(data.get('category'), 'other'),
+                'complexity': complexity_map.get(data.get('experience'), 'simple'),
                 'budget_min': budget_amount,
                 'budget_max': budget_amount * 1.5,
-                'estimated_duration': f"{data['timeline']} weeks",
-                'tech_stack': data['skills'].split(),
-                'status': 'open',
-                'start_date': '2026-01-18',
-                'deadline': '2026-02-18'
+                'estimated_duration': f"{data.get('timeline', '4')} weeks",
+                'tech_stack': data.get('skills', '').split(',') if isinstance(data.get('skills'), str) else data.get('skills', []),
+                'status': 'draft',
+                'start_date': start_date,
+                'deadline': deadline
             }
             
             result = supabase.table('projects_project').insert(project_data).execute()
             
-            return JsonResponse({
-                'message': 'Project created successfully',
-                'project': result.data[0] if result.data else project_data
-            })
+            if result.data:
+                return JsonResponse({
+                    'message': 'Project created successfully',
+                    'project': result.data[0]
+                })
+            else:
+                return JsonResponse({'error': 'Failed to create project'}, status=500)
             
         except Exception as e:
             print(f"Create project error: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+def edit_project(request, project_id):
+    """Edit an existing project"""
+    if request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            user_id = request.user.id if request.user.is_authenticated else None
+            
+            if not user_id:
+                return JsonResponse({'error': 'Unauthorized'}, status=401)
+            
+            # Update project in Supabase
+            supabase.table('projects').update({
+                'title': data.get('title'),
+                'description': data.get('description'),
+                'tech_stack': data.get('tech_stack'),
+                'status': data.get('status', 'active'),
+                'updated_at': datetime.now().isoformat()
+            }).eq('id', project_id).eq('user_id', user_id).execute()
+            
+            return JsonResponse({'success': True, 'message': 'Project updated'})
+        except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
