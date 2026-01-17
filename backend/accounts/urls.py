@@ -17,6 +17,7 @@ urlpatterns = [
     path('company/projects/<int:project_id>/applications/', views.get_project_applications, name='get_project_applications'),
     path('projects/<int:project_id>/apply/', views.apply_to_project, name='apply_to_project'),
     path('developers/', views.get_developers, name='get_developers'),
+    path('developer/<str:developer_email>/profile/', views.get_developer_profile, name='get_developer_profile'),
     
     # Portfolio endpoints
     path('portfolio/<str:developer_id>/', portfolio_views.get_developer_portfolio, name='get_developer_portfolio'),

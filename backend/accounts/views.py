@@ -29,35 +29,38 @@ def register_developer(request):
             })
             
             if auth_response.user:
-                user_id = auth_response.user.id
+                # Create user in Django database
+                from accounts.models import User, DeveloperProfile
                 
-                # Create developer profile in Supabase
-                developer_profile_data = {
-                    'user_id': user_id,
-                    'title': data.get('title', 'Developer'),
-                    'bio': data.get('bio', ''),
-                    'hourly_rate': float(data.get('hourlyRate', 25)) if data.get('hourlyRate') else 25.00,
-                    'skills': data.get('skills', 'JavaScript,HTML,CSS'),
-                    'experience': data.get('experience', 'entry'),
-                    'years_experience': int(data.get('yearsExperience', 0)) if data.get('yearsExperience') else 0,
-                    'portfolio': data.get('portfolio', ''),
-                    'github': data.get('github', ''),
-                    'linkedin': data.get('linkedin', ''),
-                    'education': data.get('education', ''),
-                    'languages': data.get('languages', 'English'),
-                    'availability': data.get('availability', 'full-time'),
-                    'rating': 0.00,
-                    'total_reviews': 0,
-                    'total_projects': 0,
-                    'completed_projects': 0,
-                    'total_earnings': 0.00,
-                    'success_rate': 0.00,
-                }
+                # Create Django User
+                django_user = User.objects.create_user(
+                    username=data['email'],  # Use email as username
+                    email=data['email'],
+                    password=data['password'],
+                    first_name=data['firstName'],
+                    last_name=data['lastName'],
+                    user_type='developer',
+                    phone=data.get('phone', ''),
+                    country=data['country'],
+                    city=data.get('city', '')
+                )
                 
-                try:
-                    supabase.table('accounts_developerprofile').insert(developer_profile_data).execute()
-                except Exception as e:
-                    print(f"Warning: Could not create developer profile: {str(e)}")
+                # Create Django DeveloperProfile
+                DeveloperProfile.objects.create(
+                    user=django_user,
+                    title=data.get('title', 'Developer'),
+                    bio=data.get('bio', ''),
+                    hourly_rate=float(data.get('hourlyRate', 25)) if data.get('hourlyRate') else 25.00,
+                    skills=data.get('skills', 'JavaScript,HTML,CSS'),
+                    experience=data.get('experience', 'entry'),
+                    years_experience=int(data.get('yearsExperience', 0)) if data.get('yearsExperience') else 0,
+                    portfolio=data.get('portfolio', ''),
+                    github=data.get('github', ''),
+                    linkedin=data.get('linkedin', ''),
+                    education=data.get('education', ''),
+                    languages=data.get('languages', 'English'),
+                    availability=data.get('availability', 'full-time')
+                )
                 
                 return JsonResponse({
                     'message': 'Developer registered successfully',
@@ -78,6 +81,8 @@ def register_developer(request):
             
         except Exception as e:
             print(f"Registration error: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return JsonResponse({'error': str(e)}, status=400)
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -106,25 +111,34 @@ def register_company(request):
             })
             
             if auth_response.user:
-                user_id = auth_response.user.id
+                # Create user in Django database
+                from accounts.models import User, CompanyProfile
                 
-                # Create company profile in Supabase
-                company_profile_data = {
-                    'user_id': user_id,
-                    'company_name': data.get('companyName', ''),
-                    'company_size': data.get('companySize', '1-10'),
-                    'industry': data.get('industry', ''),
-                    'website': data.get('website', ''),
-                    'description': data.get('description', ''),
-                    'founded_year': int(data.get('foundedYear', 2026)) if data.get('foundedYear') else 2026,
-                    'company_type': data.get('companyType', 'startup'),
-                    'is_verified': False,
-                }
+                # Create Django User
+                django_user = User.objects.create_user(
+                    username=data['email'],  # Use email as username
+                    email=data['email'],
+                    password=data['password'],
+                    first_name=data['companyName'],
+                    last_name='',
+                    user_type='company',
+                    phone=data.get('phone', ''),
+                    country=data['country'],
+                    city=data.get('city', '')
+                )
                 
-                try:
-                    supabase.table('accounts_companyprofile').insert(company_profile_data).execute()
-                except Exception as e:
-                    print(f"Warning: Could not create company profile: {str(e)}")
+                # Create Django CompanyProfile
+                CompanyProfile.objects.create(
+                    user=django_user,
+                    company_name=data.get('companyName', ''),
+                    company_size=data.get('companySize', '1-10'),
+                    industry=data.get('industry', ''),
+                    website=data.get('website', ''),
+                    description=data.get('description', ''),
+                    founded_year=int(data.get('foundedYear', 2026)) if data.get('foundedYear') else 2026,
+                    company_type=data.get('companyType', 'startup'),
+                    is_verified=False
+                )
                 
                 return JsonResponse({
                     'message': 'Company registered successfully',
@@ -145,6 +159,8 @@ def register_company(request):
             
         except Exception as e:
             print(f"Registration error: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return JsonResponse({'error': str(e)}, status=400)
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -160,7 +176,7 @@ def login(request):
             
             supabase = get_supabase_client()
             
-            # Use Supabase Auth to sign in with email confirmation bypass
+            # Use Supabase Auth to sign in
             auth_response = supabase.auth.sign_in_with_password({
                 "email": email,
                 "password": password
@@ -169,15 +185,12 @@ def login(request):
             # If user exists but email not confirmed, try to confirm it automatically
             if not auth_response.user and "Email not confirmed" in str(auth_response):
                 try:
-                    # Get user by email and confirm
                     admin_response = supabase.auth.admin.get_user_by_email(email)
                     if admin_response.user:
-                        # Confirm the user
                         supabase.auth.admin.update_user_by_id(
                             admin_response.user.id,
                             {"email_confirm": True}
                         )
-                        # Try login again
                         auth_response = supabase.auth.sign_in_with_password({
                             "email": email,
                             "password": password
@@ -191,6 +204,45 @@ def login(request):
                 # Check if user type matches
                 if user_metadata.get('user_type') != user_type:
                     return JsonResponse({'error': 'Invalid user type'}, status=401)
+                
+                # Ensure user exists in Django database
+                from accounts.models import User, DeveloperProfile, CompanyProfile
+                try:
+                    django_user = User.objects.get(email=email)
+                except User.DoesNotExist:
+                    # Create Django user if doesn't exist (for legacy users)
+                    print(f"Creating Django user for existing Supabase user: {email}")
+                    django_user = User.objects.create_user(
+                        username=email,
+                        email=email,
+                        password=password,
+                        first_name=user_metadata.get('first_name', ''),
+                        last_name=user_metadata.get('last_name', ''),
+                        user_type=user_type,
+                        phone=user_metadata.get('phone', ''),
+                        country=user_metadata.get('country', ''),
+                        city=user_metadata.get('city', '')
+                    )
+                    
+                    # Create profile if doesn't exist
+                    if user_type == 'developer':
+                        if not hasattr(django_user, 'developerprofile'):
+                            DeveloperProfile.objects.create(
+                                user=django_user,
+                                title='Developer',
+                                skills='JavaScript,HTML,CSS',
+                                experience='entry',
+                                years_experience=0
+                            )
+                    elif user_type == 'company':
+                        if not hasattr(django_user, 'companyprofile'):
+                            CompanyProfile.objects.create(
+                                user=django_user,
+                                company_name=user_metadata.get('first_name', 'Company'),
+                                company_size='1-10',
+                                industry='Technology',
+                                description='Company description'
+                            )
                 
                 return JsonResponse({
                     'message': 'Login successful',
@@ -211,6 +263,8 @@ def login(request):
             
         except Exception as e:
             print(f"Login error: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return JsonResponse({'error': 'Invalid credentials'}, status=401)
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -252,32 +306,32 @@ def get_user_profile(request):
 def get_projects(request):
     if request.method == 'GET':
         try:
-            supabase = get_supabase_client()
+            from projects.models import Project
             
-            # Get all projects from Supabase
-            result = supabase.table('projects_project').select('*').execute()
-            
-            print(f"Total projects from Supabase: {len(result.data)}")
+            # Get all projects that are open for applications
+            projects_queryset = Project.objects.filter(
+                status='open'
+            ).select_related('company').values(
+                'id', 'title', 'description', 'budget_min', 'budget_max',
+                'category', 'complexity', 'tech_stack', 'estimated_duration',
+                'created_at', 'company__first_name', 'company__last_name'
+            )
             
             projects = []
-            for project in result.data:
-                print(f"  - {project.get('title')} (status: {project.get('status')})")
-                
-                # Filter out draft and cancelled projects
-                if project.get('status') not in ['draft', 'cancelled']:
-                    projects.append({
-                        'id': project.get('id'),
-                        'title': project.get('title'),
-                        'description': project.get('description'),
-                        'budget_min': float(project.get('budget_min', 0)) if project.get('budget_min') else 0,
-                        'budget_max': float(project.get('budget_max', 0)) if project.get('budget_max') else 0,
-                        'category': project.get('category', ''),
-                        'complexity': project.get('complexity', ''),
-                        'tech_stack': project.get('tech_stack', []),
-                        'estimated_duration': project.get('estimated_duration', ''),
-                        'created_at': project.get('created_at', ''),
-                        'company': project.get('company_name', 'Company')
-                    })
+            for project in projects_queryset:
+                projects.append({
+                    'id': project['id'],
+                    'title': project['title'],
+                    'description': project['description'],
+                    'budget_min': float(project['budget_min']) if project['budget_min'] else 0,
+                    'budget_max': float(project['budget_max']) if project['budget_max'] else 0,
+                    'category': project['category'],
+                    'complexity': project['complexity'],
+                    'tech_stack': project['tech_stack'] if isinstance(project['tech_stack'], list) else [],
+                    'estimated_duration': project['estimated_duration'],
+                    'created_at': project['created_at'].isoformat() if project['created_at'] else '',
+                    'company': f"{project['company__first_name']} {project['company__last_name']}"
+                })
             
             print(f"Returning {len(projects)} visible projects")
             return JsonResponse({'projects': projects})
@@ -438,7 +492,6 @@ def edit_project(request, project_id):
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 @csrf_exempt
-@csrf_exempt
 def apply_to_project(request, project_id):
     if request.method == 'POST':
         try:
@@ -455,27 +508,69 @@ def apply_to_project(request, project_id):
             if not user_response.user:
                 return JsonResponse({'error': 'Invalid token'}, status=401)
             
-            developer_id = user_response.user.id
+            # Get Django user by email
+            from accounts.models import User
+            from projects.models import Project, ProjectApplication
+            from projects.matcher import get_matcher
             
-            # Create application in projects_projectapplication table
-            application_data = {
-                'project_id': project_id,
-                'developer_id': developer_id,
-                'cover_letter': data.get('coverLetter', ''),
-                'proposed_rate': float(data.get('proposedBudget', 0)) if data.get('proposedBudget') else None,
-                'estimated_duration': data.get('timeline', ''),
-                'status': 'pending'
-            }
+            try:
+                user = User.objects.get(email=user_response.user.email)
+                project = Project.objects.get(id=project_id)
+            except User.DoesNotExist:
+                return JsonResponse({'error': 'User not found'}, status=404)
+            except Project.DoesNotExist:
+                return JsonResponse({'error': 'Project not found'}, status=404)
             
-            result = supabase.table('projects_projectapplication').insert(application_data).execute()
+            # Check if already applied
+            if ProjectApplication.objects.filter(project=project, developer=user).exists():
+                return JsonResponse({'error': 'You have already applied to this project'}, status=400)
             
-            if result.data:
-                return JsonResponse({
-                    'message': 'Application submitted successfully',
-                    'application': result.data[0]
-                })
-            else:
-                return JsonResponse({'error': 'Failed to submit application'}, status=500)
+            # Create application
+            application = ProjectApplication.objects.create(
+                project=project,
+                developer=user,
+                cover_letter=data.get('coverLetter', ''),
+                proposed_rate=float(data.get('proposedBudget', 0)) if data.get('proposedBudget') else None,
+                estimated_duration=data.get('timeline', ''),
+                status='pending'
+            )
+            
+            # Calculate ML match scores
+            try:
+                matcher = get_matcher()
+                developer_profile = user.developerprofile
+                
+                # Extract features and get match details
+                match_details = matcher.get_match_details(application)
+                
+                if match_details:
+                    # Update application with ML scores
+                    application.match_score = match_details['overall_score']
+                    application.skill_match_score = match_details['component_scores']['skill_match']
+                    application.experience_fit_score = match_details['component_scores']['experience_fit']
+                    application.portfolio_quality_score = match_details['component_scores']['portfolio_quality']
+                    application.matching_skills = match_details['matching_skills']
+                    application.missing_skills = match_details['missing_skills']
+                    application.ai_reasoning = f"Overall match: {match_details['overall_score']}%. Skills matched: {len(match_details['matching_skills'])}/{len(match_details['matching_skills']) + len(match_details['missing_skills'])}"
+                    application.save()
+            except Exception as e:
+                print(f"ML matching error: {str(e)}")
+                # Continue even if ML matching fails
+            
+            # Update project applications count
+            project.applications_count = project.applications.count()
+            project.save()
+            
+            return JsonResponse({
+                'message': 'Application submitted successfully',
+                'application': {
+                    'id': application.id,
+                    'project_id': project.id,
+                    'match_score': application.match_score,
+                    'status': application.status,
+                    'applied_at': application.applied_at.isoformat()
+                }
+            })
             
         except Exception as e:
             print(f"Apply to project error: {str(e)}")
@@ -489,14 +584,76 @@ def apply_to_project(request, project_id):
 def get_project_applications(request, project_id):
     if request.method == 'GET':
         try:
+            auth_header = request.headers.get('Authorization')
+            if not auth_header:
+                return JsonResponse({'error': 'No authorization token'}, status=401)
+            
+            token = auth_header.replace('Bearer ', '')
             supabase = get_supabase_client()
             
-            # Get applications sorted by matching_score (highest first)
-            result = supabase.table('applications').select('*').eq('project_id', project_id).order('matching_score', desc=True).execute()
+            user_response = supabase.auth.get_user(token)
+            if not user_response.user:
+                return JsonResponse({'error': 'Invalid token'}, status=401)
             
-            return JsonResponse({'applications': result.data})
+            from accounts.models import User
+            from projects.models import Project, ProjectApplication
+            
+            try:
+                user = User.objects.get(email=user_response.user.email)
+                project = Project.objects.get(id=project_id)
+                
+                # Verify user owns the project
+                if project.company != user:
+                    return JsonResponse({'error': 'Unauthorized'}, status=403)
+                
+                # Get all applications sorted by match score
+                applications = ProjectApplication.objects.filter(
+                    project=project
+                ).select_related('developer', 'developer__developerprofile').order_by('-match_score')
+                
+                applications_data = []
+                for app in applications:
+                    try:
+                        profile = app.developer.developerprofile
+                        applications_data.append({
+                            'id': app.id,
+                            'developer_name': app.developer.get_full_name(),
+                            'developer_title': profile.title,
+                            'developer_email': app.developer.email,
+                            'cover_letter': app.cover_letter,
+                            'proposed_rate': float(app.proposed_rate) if app.proposed_rate else None,
+                            'estimated_duration': app.estimated_duration,
+                            'status': app.status,
+                            'applied_at': app.applied_at.isoformat(),
+                            'match_score': app.match_score,
+                            'skill_match_score': app.skill_match_score,
+                            'experience_fit_score': app.experience_fit_score,
+                            'portfolio_quality_score': app.portfolio_quality_score,
+                            'matching_skills': app.matching_skills,
+                            'missing_skills': app.missing_skills,
+                            'ai_reasoning': app.ai_reasoning,
+                            'developer_stats': {
+                                'rating': float(profile.rating),
+                                'total_projects': profile.total_projects,
+                                'success_rate': float(profile.success_rate),
+                                'years_experience': profile.years_experience
+                            }
+                        })
+                    except Exception as e:
+                        print(f"Error processing application {app.id}: {e}")
+                        continue
+                
+                return JsonResponse({'applications': applications_data})
+                
+            except User.DoesNotExist:
+                return JsonResponse({'error': 'User not found'}, status=404)
+            except Project.DoesNotExist:
+                return JsonResponse({'error': 'Project not found'}, status=404)
             
         except Exception as e:
+            print(f"Get applications error: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return JsonResponse({'error': str(e)}, status=500)
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -542,10 +699,56 @@ def get_developers(request):
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 @csrf_exempt
+def get_developer_profile(request, developer_email):
+    """Get developer profile by email"""
+    if request.method == 'GET':
+        try:
+            from accounts.models import User, DeveloperProfile
+            
+            # Find user by email
+            user = User.objects.get(email=developer_email, user_type='developer')
+            profile = user.developerprofile
+            
+            return JsonResponse({
+                'developer': {
+                    'id': user.id,
+                    'name': user.get_full_name(),
+                    'email': user.email,
+                    'title': profile.title,
+                    'bio': profile.bio,
+                    'skills': profile.skills,
+                    'experience': profile.experience,
+                    'years_experience': profile.years_experience,
+                    'hourly_rate': float(profile.hourly_rate) if profile.hourly_rate else None,
+                    'rating': float(profile.rating),
+                    'total_projects': profile.total_projects,
+                    'completed_projects': profile.completed_projects,
+                    'success_rate': float(profile.success_rate),
+                    'portfolio': profile.portfolio,
+                    'github': profile.github,
+                    'linkedin': profile.linkedin,
+                    'dribbble': profile.dribbble,
+                    'behance': profile.behance,
+                    'education': profile.education,
+                    'languages': profile.languages,
+                    'availability': profile.availability,
+                }
+            })
+            
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'Developer not found'}, status=404)
+        except Exception as e:
+            print(f"Get developer profile error: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+@csrf_exempt
 def test_endpoint(request):
     return JsonResponse({'message': 'Test endpoint working', 'method': request.method})
 
-@csrf_exempt
 @csrf_exempt
 def create_project(request):
     if request.method == 'POST':
@@ -564,7 +767,15 @@ def create_project(request):
             if not user_response.user:
                 return JsonResponse({'error': 'Invalid token'}, status=401)
             
+            # Get Django user by email
+            from accounts.models import User
+            try:
+                user = User.objects.get(email=user_response.user.email)
+            except User.DoesNotExist:
+                return JsonResponse({'error': 'User not found in database'}, status=404)
+            
             from datetime import datetime, timedelta
+            from projects.models import Project
             
             # Map categories to match database constraints
             category_map = {
@@ -586,34 +797,39 @@ def create_project(request):
             budget_amount = int(data.get('budget', 1000))
             
             # Parse dates
-            start_date = datetime.now().date().isoformat()
-            deadline = (datetime.now() + timedelta(days=30)).date().isoformat()
+            start_date = datetime.now().date()
+            deadline = (datetime.now() + timedelta(days=30)).date()
             
-            # Create project in Supabase
-            project_data = {
-                'company_id': user_response.user.id,
-                'title': data.get('title', ''),
-                'description': data.get('description', ''),
-                'category': category_map.get(data.get('category'), 'other'),
-                'complexity': complexity_map.get(data.get('experience'), 'simple'),
-                'budget_min': budget_amount,
-                'budget_max': budget_amount * 1.5,
-                'estimated_duration': f"{data.get('timeline', '4')} weeks",
-                'tech_stack': data.get('skills', '').split(',') if isinstance(data.get('skills'), str) else data.get('skills', []),
-                'status': 'draft',
-                'start_date': start_date,
-                'deadline': deadline
-            }
+            # Create project in Django database
+            project = Project.objects.create(
+                company=user,
+                title=data.get('title', ''),
+                description=data.get('description', ''),
+                category=category_map.get(data.get('category'), 'other'),
+                complexity=complexity_map.get(data.get('experience'), 'simple'),
+                budget_min=budget_amount,
+                budget_max=budget_amount * 1.5,
+                estimated_duration=f"{data.get('timeline', '4')} weeks",
+                tech_stack=data.get('skills', '').split(',') if isinstance(data.get('skills'), str) else data.get('skills', []),
+                status='open',  # Set to 'open' so it's visible
+                start_date=start_date,
+                deadline=deadline
+            )
             
-            result = supabase.table('projects_project').insert(project_data).execute()
-            
-            if result.data:
-                return JsonResponse({
-                    'message': 'Project created successfully',
-                    'project': result.data[0]
-                })
-            else:
-                return JsonResponse({'error': 'Failed to create project'}, status=500)
+            return JsonResponse({
+                'message': 'Project created successfully',
+                'project': {
+                    'id': project.id,
+                    'title': project.title,
+                    'description': project.description,
+                    'category': project.category,
+                    'complexity': project.complexity,
+                    'budget_min': float(project.budget_min),
+                    'budget_max': float(project.budget_max),
+                    'status': project.status,
+                    'created_at': project.created_at.isoformat()
+                }
+            })
             
         except Exception as e:
             print(f"Create project error: {str(e)}")

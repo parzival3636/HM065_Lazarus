@@ -17,6 +17,7 @@ import Portfolio from './components/Portfolio'
 import Earnings from './components/Earnings'
 import ProjectBrowser from './components/ProjectBrowser'
 import ProjectApplications from './components/ProjectApplications'
+import DeveloperProfileView from './components/DeveloperProfileView'
 import './App.css'
 
 function App() {
@@ -42,6 +43,7 @@ function App() {
         <Route path="/portfolio" element={<Portfolio />} />
         <Route path="/dashboard/developer/portfolio" element={<Portfolio />} />
         <Route path="/earnings" element={<Earnings />} />
+        <Route path="/developer/:developerId" element={<DeveloperProfileView />} />
       </Routes>
     </Router>
   )

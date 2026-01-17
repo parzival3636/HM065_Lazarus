@@ -56,8 +56,33 @@ class DeveloperProfile(models.Model):
     total_earnings = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     success_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     
+    # Past projects for ML matching
+    past_projects = models.JSONField(default=list, blank=True)
+    
     def __str__(self):
         return f"{self.user.get_full_name()} - {self.title}"
+
+class PortfolioProject(models.Model):
+    """Developer portfolio projects for showcasing work."""
+    developer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='portfolio_projects')
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    tech_stack = models.JSONField(default=list)
+    images = models.JSONField(default=list)  # Array of image URLs
+    video_url = models.URLField(blank=True)
+    project_url = models.URLField(blank=True)
+    github_url = models.URLField(blank=True)
+    featured = models.BooleanField(default=False)
+    views_count = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.title} - {self.developer.get_full_name()}"
+
 
 class CompanyProfile(models.Model):
     COMPANY_SIZES = (

@@ -56,6 +56,12 @@ class ProjectApplicationSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'project', 'project_title', 'developer', 'developer_name',
             'developer_profile', 'cover_letter', 'proposed_rate',
-            'estimated_duration', 'portfolio_links', 'status', 'applied_at'
+            'estimated_duration', 'portfolio_links', 'status', 'applied_at',
+            'match_score', 'skill_match_score', 'experience_fit_score',
+            'portfolio_quality_score', 'matching_skills', 'missing_skills',
+            'ai_reasoning', 'manual_override'
         ]
-        read_only_fields = ['id', 'developer', 'applied_at']
+        read_only_fields = ['id', 'developer', 'applied_at', 'match_score', 
+                           'skill_match_score', 'experience_fit_score',
+                           'portfolio_quality_score', 'matching_skills', 
+                           'missing_skills', 'ai_reasoning']

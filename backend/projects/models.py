@@ -92,5 +92,15 @@ class ProjectApplication(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     applied_at = models.DateTimeField(auto_now_add=True)
     
+    # ML Matching scores
+    match_score = models.IntegerField(null=True, blank=True)
+    skill_match_score = models.IntegerField(null=True, blank=True)
+    experience_fit_score = models.IntegerField(null=True, blank=True)
+    portfolio_quality_score = models.IntegerField(null=True, blank=True)
+    matching_skills = models.JSONField(default=list, blank=True)
+    missing_skills = models.JSONField(default=list, blank=True)
+    ai_reasoning = models.TextField(blank=True)
+    manual_override = models.BooleanField(default=False)
+    
     class Meta:
         unique_together = ('project', 'developer')
