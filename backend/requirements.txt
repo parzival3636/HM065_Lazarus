@@ -3,7 +3,7 @@ djangorestframework==3.16.1
 django-cors-headers==4.9.0
 psycopg2-binary==2.9.11
 python-decouple==3.8
-sentence-transformers==2.2.2
+sentence-transformers>=3.3.0
 torch>=2.5.0
-scikit-learn>=1.4.0
-numpy==1.24.3
+scikit-learn>=1.6.0
+numpy>=2.0.0
