@@ -39,20 +39,19 @@ DevConnect is an intelligent freelancer matching platform that uses advanced AI 
 ## **🖼️ Screenshots**  
 Here are some screenshots showcasing the DevConnect platform:  
 
+
 **🔹 Landing Page**  
-![DevConnect Home](https://via.placeholder.com/800x400/1a1a2e/ffffff?text=DevConnect+Landing+Page)  
+<img width="1918" height="976" alt="image" src="https://github.com/user-attachments/assets/02fe8d14-4740-4253-929a-a4f95c7e0dfb" /> 
 
 **🔹 Project Dashboard**  
-![Project Dashboard](https://via.placeholder.com/800x400/16213e/ffffff?text=Company+Project+Dashboard)   
+<img width="1918" height="888" alt="image" src="https://github.com/user-attachments/assets/0af4149e-b7f8-409c-bf46-1e0b040ea97a" />  
 
-**🔹 AI Freelancer Rankings**  
-![AI Rankings](https://via.placeholder.com/800x400/0f3460/ffffff?text=AI+Powered+Freelancer+Rankings)  
-
-**🔹 Developer Portfolio**  
-![Developer Portfolio](https://via.placeholder.com/800x400/533483/ffffff?text=Developer+Portfolio+Showcase)  
+  
 
 **🔹 Match Analysis**  
-![Match Analysis](https://via.placeholder.com/800x400/7209b7/ffffff?text=Detailed+Match+Analysis)  
+<img width="1919" height="874" alt="image" src="https://github.com/user-attachments/assets/faf78de1-eac9-4f0e-bfbd-2afefdbd661d" />
+
+  
 
 ---
 
@@ -62,7 +61,7 @@ Here are some screenshots showcasing the DevConnect platform:
 ---
 
 ## **🎥 Demo Video**  
-📽️ **[Watch the Demo](https://www.youtube.com/watch?v=demo-video-id)**  
+📽️ **[Watch the Demo](https://www.loom.com/share/a008fafc1922428bb8835037fd93b254)**    
 
 ---
 
@@ -81,9 +80,10 @@ Here are some screenshots showcasing the DevConnect platform:
 ---
 
 **System Architecture**
-![System Architecture](https://via.placeholder.com/800x500/2c3e50/ffffff?text=DevConnect+AI+Architecture)
+<img width="2895" height="2087" alt="image" src="https://github.com/user-attachments/assets/b7ef213a-c5c1-4e28-9d96-8e8a89e03757" />
 
 ---
+
 
 ## **🚀 Upcoming Features**  
 
