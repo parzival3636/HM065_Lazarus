@@ -9,6 +9,9 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '.onrender.com']
 
+# Port configuration for Render
+PORT = int(os.environ.get('PORT', 8000))
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
