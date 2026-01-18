@@ -107,4 +107,4 @@ Here are some screenshots showcasing the DevConnect platform:
 
 
 🚀 **Thank You for Using DevConnect!**  
-We hope this AI-powered platform revolutionizes how companies find and hire the perfect freelancers for their projects. 🤖💙
+We hope this AI-powered platform revolutionizes how companies find and hire the perfect freelancers for their projects. 🤖
