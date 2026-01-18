@@ -1,14 +1,31 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { getUserProfile } from '../services/api'
+import Navbar from './Navbar'
 import './Projects.css'
 
 const Projects = () => {
+  const [user, setUser] = useState(null)
   const [filter, setFilter] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [complexityFilter, setComplexityFilter] = useState('all')
   const [sortBy, setSortBy] = useState('newest')
   const [showPostForm, setShowPostForm] = useState(false)
   const [bookmarkedProjects, setBookmarkedProjects] = useState(new Set())
+  
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const result = await getUserProfile()
+        if (result.user) {
+          setUser(result.user)
+        }
+      } catch (error) {
+        console.error('Failed to fetch user:', error)
+      }
+    }
+    fetchUser()
+  }, [])
   
   const techStacks = ['React', 'Node.js', 'Python', 'Django', 'Vue.js', 'Angular', 'Flutter', 'React Native', 'PHP', 'Laravel', 'MongoDB', 'PostgreSQL', 'AWS', 'Docker']
   
@@ -144,19 +161,7 @@ const Projects = () => {
 
   return (
     <div className="projects">
-      <nav className="projects-nav">
-        <div className="nav-brand">DevConnect</div>
-        <div className="nav-links">
-          <Link to="/dashboard">Dashboard</Link>
-          <button 
-            className="btn btn-primary"
-            onClick={() => setShowPostForm(true)}
-          >
-            Post Project
-          </button>
-          <Link to="/">Logout</Link>
-        </div>
-      </nav>
+      <Navbar user={user} />
 
       <div className="projects-content">
         <div className="projects-header">

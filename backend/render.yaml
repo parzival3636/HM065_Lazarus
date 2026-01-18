@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: devconnect-backend
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn devconnect.wsgi:application"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DEBUG
+        value: False
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://your-frontend-url.vercel.app"

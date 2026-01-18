@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { getUserProfile } from '../services/api'
+import Navbar from './Navbar'
 import './Dashboard.css'
 
 const Earnings = () => {
+  const [user, setUser] = useState(null)
   const [earnings, setEarnings] = useState({
     totalEarnings: 0,
     thisMonth: 0,
@@ -13,6 +16,18 @@ const Earnings = () => {
   const [transactions, setTransactions] = useState([])
 
   useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const result = await getUserProfile()
+        if (result.user) {
+          setUser(result.user)
+        }
+      } catch (error) {
+        console.error('Failed to fetch user:', error)
+      }
+    }
+    fetchUser()
+
     // Mock data
     setEarnings({
       totalEarnings: 12500,
@@ -40,7 +55,9 @@ const Earnings = () => {
   }, [])
 
   return (
-    <div className="dashboard-container">
+    <div>
+      <Navbar user={user} />
+      <div className="dashboard-container">
       <h1>Earnings Overview</h1>
 
       <div className="dashboard-stats">
@@ -101,6 +118,7 @@ const Earnings = () => {
       </div>
 
       <Link to="/dashboard/developer" className="back-link">← Back to Dashboard</Link>
+      </div>
     </div>
   )
 }

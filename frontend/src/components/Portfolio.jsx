@@ -14,13 +14,11 @@ const Portfolio = () => {
     title: '',
     description: '',
     tech_stack: [],
-    images: [],
     video_url: '',
     project_url: '',
     github_url: '',
     featured: false,
   })
-  const [imageInput, setImageInput] = useState('')
   const [techInput, setTechInput] = useState('')
 
   useEffect(() => {
@@ -45,22 +43,7 @@ const Portfolio = () => {
     }
   }
 
-  const handleAddImage = () => {
-    if (imageInput.trim()) {
-      setFormData({
-        ...formData,
-        images: [...formData.images, imageInput.trim()]
-      })
-      setImageInput('')
-    }
-  }
 
-  const handleRemoveImage = (index) => {
-    setFormData({
-      ...formData,
-      images: formData.images.filter((_, i) => i !== index)
-    })
-  }
 
   const handleAddTech = () => {
     if (techInput.trim()) {
@@ -82,25 +65,28 @@ const Portfolio = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (formData.images.length === 0) {
-      alert('Please add at least one image')
-      return
-    }
-
     if (!formData.title || !formData.description) {
       alert('Please fill in title and description')
       return
     }
 
     try {
-      const result = await createPortfolioProject(formData)
+      // Add default placeholder images
+      const projectData = {
+        ...formData,
+        images: [
+          'https://via.placeholder.com/600x400/007bff/ffffff?text=Project+Image+1',
+          'https://via.placeholder.com/600x400/28a745/ffffff?text=Project+Image+2'
+        ]
+      }
+      
+      const result = await createPortfolioProject(projectData)
       if (result.project) {
         setProjects([result.project, ...projects])
         setFormData({
           title: '',
           description: '',
           tech_stack: [],
-          images: [],
           video_url: '',
           project_url: '',
           github_url: '',
@@ -182,35 +168,6 @@ const Portfolio = () => {
                   rows="5"
                   required
                 />
-              </div>
-
-              <div className="form-group">
-                <label>Project Images * (at least 1)</label>
-                <div className="image-input-group">
-                  <input
-                    type="url"
-                    value={imageInput}
-                    onChange={(e) => setImageInput(e.target.value)}
-                    placeholder="Enter image URL"
-                  />
-                  <button type="button" onClick={handleAddImage} className="btn btn-secondary">
-                    Add Image
-                  </button>
-                </div>
-                <div className="image-list">
-                  {formData.images.map((img, idx) => (
-                    <div key={idx} className="image-item">
-                      <img src={img} alt={`Project ${idx + 1}`} />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveImage(idx)}
-                        className="btn-remove"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
               </div>
 
               <div className="form-group">
