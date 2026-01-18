@@ -36,8 +36,6 @@ DevConnect is an intelligent freelancer matching platform that uses advanced AI 
 ✔ **Responsive Design** - Optimized for desktop, tablet, and mobile devices  
 ✔ **RESTful API** - Complete API for frontend integration and third-party connections  
 
----
-
 ## **🖼️ Screenshots**  
 Here are some screenshots showcasing the DevConnect platform:  
 
