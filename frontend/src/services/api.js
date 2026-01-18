@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://127.0.0.1:8000/api'
+const API_BASE_URL = 'https://hm065-lazarus-8xdt.onrender.com/api'
 
 export const registerDeveloper = async (formData) => {
   const response = await fetch(`${API_BASE_URL}/auth/register/developer/`, {
