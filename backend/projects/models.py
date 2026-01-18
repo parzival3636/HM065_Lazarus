@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+from datetime import timedelta
 
 User = get_user_model()
 
@@ -41,13 +43,14 @@ class Project(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField()
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
-    tech_stack = models.JSONField(default=list)  # List of technologies
+    tech_stack = models.JSONField(default=list)
     complexity = models.CharField(max_length=20, choices=COMPLEXITY_CHOICES)
     
     # Timeline
     start_date = models.DateField()
     deadline = models.DateField()
     estimated_duration = models.CharField(max_length=100, blank=True)
+    submission_deadline = models.DateField(null=True, blank=True)  # Final submission deadline
     
     # Budget
     budget_min = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
@@ -55,11 +58,11 @@ class Project(models.Model):
     budget_hidden = models.BooleanField(default=False)
     
     # Deliverables
-    deliverables = models.JSONField(default=list)  # List of required deliverables
-    reference_files = models.JSONField(default=list, blank=True)  # File URLs
+    deliverables = models.JSONField(default=list)
+    reference_files = models.JSONField(default=list, blank=True)
     
     # Tags and categorization
-    tags = models.JSONField(default=list, blank=True)  # Additional tags
+    tags = models.JSONField(default=list, blank=True)
     
     # Status and metadata
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
@@ -104,3 +107,108 @@ class ProjectApplication(models.Model):
     
     class Meta:
         unique_together = ('project', 'developer')
+
+
+class ProjectAssignment(models.Model):
+    """When a company assigns a project to a developer"""
+    project = models.OneToOneField(Project, on_delete=models.CASCADE, related_name='assignment')
+    developer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assigned_projects')
+    application = models.OneToOneField(ProjectApplication, on_delete=models.CASCADE, related_name='assignment')
+    
+    # Timelines
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    figma_deadline = models.DateTimeField()  # 1 week from assignment
+    submission_deadline = models.DateTimeField()  # Final submission deadline
+    
+    # Status
+    figma_submitted = models.BooleanField(default=False)
+    figma_submitted_at = models.DateTimeField(null=True, blank=True)
+    project_submitted = models.BooleanField(default=False)
+    project_submitted_at = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def save(self, *args, **kwargs):
+        if not self.figma_deadline:
+            self.figma_deadline = timezone.now() + timedelta(days=7)
+        if not self.submission_deadline:
+            self.submission_deadline = timezone.now() + timedelta(days=30)
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.project.title} - {self.developer.get_full_name()}"
+
+
+class ProjectChat(models.Model):
+    """Chat between company and developer for assigned project"""
+    assignment = models.OneToOneField(ProjectAssignment, on_delete=models.CASCADE, related_name='chat')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Chat for {self.assignment.project.title}"
+
+
+class ChatMessage(models.Model):
+    """Individual messages in project chat"""
+    chat = models.ForeignKey(ProjectChat, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.TextField()
+    
+    # File attachments
+    attachments = models.JSONField(default=list, blank=True)  # List of file URLs
+    
+    # Message type
+    MESSAGE_TYPES = (
+        ('text', 'Text'),
+        ('system', 'System'),  # Automated messages like "Congratulations..."
+        ('file', 'File'),
+    )
+    message_type = models.CharField(max_length=20, choices=MESSAGE_TYPES, default='text')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['created_at']
+    
+    def __str__(self):
+        return f"Message from {self.sender.get_full_name()}"
+
+
+class FigmaDesignSubmission(models.Model):
+    """Figma design submission (1 week deadline)"""
+    assignment = models.OneToOneField(ProjectAssignment, on_delete=models.CASCADE, related_name='figma_submission')
+    developer = models.ForeignKey(User, on_delete=models.CASCADE)
+    
+    # Design details
+    figma_url = models.URLField()
+    description = models.TextField(blank=True)
+    
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"Figma Design - {self.assignment.project.title}"
+
+
+class ProjectSubmission(models.Model):
+    """Final project submission"""
+    assignment = models.OneToOneField(ProjectAssignment, on_delete=models.CASCADE, related_name='submission')
+    developer = models.ForeignKey(User, on_delete=models.CASCADE)
+    
+    # Submission content
+    description = models.TextField()  # Rich text content
+    documentation_links = models.JSONField(default=list)  # PDF links
+    github_links = models.JSONField(default=list)  # GitHub repo links
+    project_links = models.JSONField(default=list)  # Live project links
+    additional_links = models.JSONField(default=list)  # Any other links
+    
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    
+    # Company review
+    approved = models.BooleanField(null=True, blank=True)  # None = pending, True = approved, False = rejected
+    company_feedback = models.TextField(blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    
+    def __str__(self):
+        return f"Submission - {self.assignment.project.title}"

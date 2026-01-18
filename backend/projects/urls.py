@@ -2,11 +2,13 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 from .api_views import ProjectViewSet, ProjectApplicationViewSet
+from .assignment_views import ProjectAssignmentViewSet
 
 # Create router for REST API
 router = DefaultRouter()
 router.register(r'', ProjectViewSet, basename='project')
 router.register(r'applications', ProjectApplicationViewSet, basename='application')
+router.register(r'assignments', ProjectAssignmentViewSet, basename='assignment')
 
 urlpatterns = [
     # REST API routes

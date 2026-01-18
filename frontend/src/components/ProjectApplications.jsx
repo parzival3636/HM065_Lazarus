@@ -10,7 +10,6 @@ const ProjectApplications = () => {
   const [user, setUser] = useState(null)
   const [applications, setApplications] = useState([])
   const [loading, setLoading] = useState(true)
-  const [expandedApp, setExpandedApp] = useState(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -35,168 +34,133 @@ const ProjectApplications = () => {
     fetchData()
   }, [projectId])
 
-  const getScoreGradient = (score) => {
-    if (!score) return 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-    if (score >= 80) return 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-    if (score >= 60) return 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
-    return 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
-  }
-
   const getScoreBadge = (score) => {
-    if (!score) return 'Analyzing...'
+    if (!score) return 'Not Scored'
     if (score >= 80) return 'Excellent Match'
     if (score >= 60) return 'Good Match'
     return 'Fair Match'
   }
 
-  const handleAssignProject = (applicationId) => {
-    console.log('Assigning project to application:', applicationId)
-    alert('🎉 Project assignment feature coming soon!')
+  const handleAssignProject = async (applicationId) => {
+    try {
+      const session = JSON.parse(localStorage.getItem('session') || '{}')
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/api/projects/assignments/assign_project/`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            application_id: applicationId
+          })
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        alert('Project assigned successfully!')
+        // Refresh applications list
+        const applicationsResult = await getProjectApplications(projectId)
+        if (applicationsResult.applications) {
+          setApplications(applicationsResult.applications)
+        }
+      } else {
+        const data = await response.json()
+        alert(`Error: ${data.error || 'Failed to assign project'}`)
+      }
+    } catch (error) {
+      console.error('Error assigning project:', error)
+      alert('Failed to assign project')
+    }
   }
 
   const handleViewProfile = (developerId) => {
     navigate(`/developer/${developerId}`)
   }
 
-  if (loading) {
-    return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p>Loading applications...</p>
-      </div>
-    )
-  }
-  
-  if (!user) return <div className="error-container">Please login to continue</div>
+  if (loading) return <div className="loading">Loading applications...</div>
+  if (!user) return <div className="loading">Please login to continue</div>
 
   return (
-    <div className="applications-page">
+    <>
       <Navbar user={user} />
-      
       <div className="applications-container">
-        <div className="page-header">
-          <div className="header-content">
-            <h1 className="page-title">
-              <span className="title-icon">📋</span>
-              Project Applications
-            </h1>
-            <p className="page-subtitle">Review and manage candidate applications</p>
-          </div>
+        <div className="applications-header">
+          <h1>Project Applications</h1>
           <Link to="/dashboard/company/my-projects" className="back-button">
-            <span>←</span> Back to Projects
+            ← Back to My Projects
           </Link>
         </div>
 
-        {applications.length > 0 ? (
-          <div className="applications-grid">
-            {applications.map((application, index) => (
-              <div 
-                key={application.id} 
-                className="application-card"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                {/* Header with Score */}
-                <div className="card-header">
+        <div className="applications-list">
+          {applications.length > 0 ? (
+            applications.map(application => (
+              <div key={application.id} className="application-card">
+                <div className="application-header">
                   <div className="developer-info">
-                    <div className="avatar" style={{ background: getScoreGradient(application.match_score) }}>
-                      {(application.developer_name || application.developer_email).charAt(0).toUpperCase()}
-                    </div>
-                    <div className="developer-details">
-                      <h3 className="developer-name">
-                        {application.developer_name || application.developer_email}
-                      </h3>
-                      <p className="developer-title">{application.developer_title}</p>
-                      <p className="developer-email">{application.developer_email}</p>
-                    </div>
+                    <h3>{application.developer_name || application.developer_email}</h3>
+                    <p className="title">{application.developer_title}</p>
+                    <p className="email">{application.developer_email}</p>
                   </div>
-                  
-                  <div className="score-badge" style={{ background: getScoreGradient(application.match_score) }}>
-                    <div className="score-number">{application.match_score || '—'}%</div>
-                    <div className="score-label">{getScoreBadge(application.match_score)}</div>
+                  <div className="ml-score-badge">
+                    <div className="score">{application.match_score || 'N/A'}%</div>
+                    <div className="label">{getScoreBadge(application.match_score)}</div>
                   </div>
                 </div>
 
-                {/* AI Analysis Section */}
+                {/* ML Scoring Breakdown */}
                 {application.match_score && (
-                  <div className="ai-analysis">
-                    <div className="analysis-header">
-                      <span className="ai-icon">🤖</span>
-                      <h4>AI Match Analysis</h4>
-                    </div>
-                    
-                    <div className="score-breakdown">
+                  <div className="ml-breakdown">
+                    <h4>AI Match Analysis</h4>
+                    <div className="score-grid">
                       <div className="score-item">
-                        <div className="score-item-header">
-                          <span className="score-item-label">Skills Match</span>
-                          <span className="score-item-value">{application.skill_match_score || 0}%</span>
-                        </div>
-                        <div className="progress-bar">
-                          <div 
-                            className="progress-fill" 
-                            style={{ width: `${application.skill_match_score || 0}%` }}
-                          ></div>
-                        </div>
+                        <strong>Skill Match</strong>
+                        <div className="value">{application.skill_match_score || 0}%</div>
                       </div>
-                      
                       <div className="score-item">
-                        <div className="score-item-header">
-                          <span className="score-item-label">Experience Fit</span>
-                          <span className="score-item-value">{application.experience_fit_score || 0}%</span>
-                        </div>
-                        <div className="progress-bar">
-                          <div 
-                            className="progress-fill" 
-                            style={{ width: `${application.experience_fit_score || 0}%` }}
-                          ></div>
-                        </div>
+                        <strong>Experience Fit</strong>
+                        <div className="value">{application.experience_fit_score || 0}%</div>
                       </div>
-                      
                       <div className="score-item">
-                        <div className="score-item-header">
-                          <span className="score-item-label">Portfolio Quality</span>
-                          <span className="score-item-value">{application.portfolio_quality_score || 0}%</span>
-                        </div>
-                        <div className="progress-bar">
-                          <div 
-                            className="progress-fill" 
-                            style={{ width: `${application.portfolio_quality_score || 0}%` }}
-                          ></div>
-                        </div>
+                        <strong>Portfolio Quality</strong>
+                        <div className="value">{application.portfolio_quality_score || 0}%</div>
                       </div>
                     </div>
 
-                    {/* Skills */}
-                    <div className="skills-section">
-                      {application.matching_skills && application.matching_skills.length > 0 && (
-                        <div className="skills-group">
-                          <div className="skills-label">
-                            <span className="check-icon">✓</span> Matching Skills
-                          </div>
-                          <div className="skills-tags">
-                            {application.matching_skills.map((skill, idx) => (
-                              <span key={idx} className="skill-tag skill-match">{skill}</span>
-                            ))}
-                          </div>
+                    {/* Matching Skills */}
+                    {application.matching_skills && application.matching_skills.length > 0 && (
+                      <div className="skills-section matching">
+                        <strong>✓ Matching Skills</strong>
+                        <div className="skills-tags">
+                          {application.matching_skills.map((skill, idx) => (
+                            <span key={idx} className="skill-tag matching">
+                              {skill}
+                            </span>
+                          ))}
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      {application.missing_skills && application.missing_skills.length > 0 && (
-                        <div className="skills-group">
-                          <div className="skills-label">
-                            <span className="cross-icon">✗</span> Missing Skills
-                          </div>
-                          <div className="skills-tags">
-                            {application.missing_skills.map((skill, idx) => (
-                              <span key={idx} className="skill-tag skill-missing">{skill}</span>
-                            ))}
-                          </div>
+                    {/* Missing Skills */}
+                    {application.missing_skills && application.missing_skills.length > 0 && (
+                      <div className="skills-section missing">
+                        <strong>✗ Missing Skills</strong>
+                        <div className="skills-tags">
+                          {application.missing_skills.map((skill, idx) => (
+                            <span key={idx} className="skill-tag missing">
+                              {skill}
+                            </span>
+                          ))}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
+                    {/* AI Reasoning */}
                     {application.ai_reasoning && (
                       <div className="ai-reasoning">
-                        <span className="reasoning-icon">💡</span>
+                        <strong>AI Analysis</strong>
                         <p>{application.ai_reasoning}</p>
                       </div>
                     )}
@@ -205,104 +169,70 @@ const ProjectApplications = () => {
 
                 {/* Developer Stats */}
                 {application.developer_stats && (
-                  <div className="stats-grid">
+                  <div className="developer-stats">
                     <div className="stat-card">
-                      <div className="stat-icon">⭐</div>
-                      <div className="stat-content">
-                        <div className="stat-value">{application.developer_stats.rating.toFixed(1)}</div>
-                        <div className="stat-label">Rating</div>
-                      </div>
+                      <strong>Rating</strong>
+                      <p>⭐ {application.developer_stats.rating.toFixed(1)}/5.0</p>
                     </div>
                     <div className="stat-card">
-                      <div className="stat-icon">💼</div>
-                      <div className="stat-content">
-                        <div className="stat-value">{application.developer_stats.years_experience}</div>
-                        <div className="stat-label">Years Exp</div>
-                      </div>
+                      <strong>Experience</strong>
+                      <p>{application.developer_stats.years_experience} years</p>
                     </div>
                     <div className="stat-card">
-                      <div className="stat-icon">📊</div>
-                      <div className="stat-content">
-                        <div className="stat-value">{application.developer_stats.total_projects}</div>
-                        <div className="stat-label">Projects</div>
-                      </div>
+                      <strong>Projects</strong>
+                      <p>{application.developer_stats.total_projects}</p>
                     </div>
                     <div className="stat-card">
-                      <div className="stat-icon">🎯</div>
-                      <div className="stat-content">
-                        <div className="stat-value">{application.developer_stats.success_rate.toFixed(0)}%</div>
-                        <div className="stat-label">Success</div>
-                      </div>
+                      <strong>Success Rate</strong>
+                      <p>{application.developer_stats.success_rate.toFixed(0)}%</p>
                     </div>
                   </div>
                 )}
-
-                {/* Application Details */}
+                
                 <div className="application-details">
-                  <div className="detail-row">
-                    <span className="detail-label">💰 Proposed Budget</span>
-                    <span className="detail-value">${application.proposed_rate || 'Not specified'}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">⏱️ Timeline</span>
-                    <span className="detail-value">{application.estimated_duration}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">📅 Applied</span>
-                    <span className="detail-value">{new Date(application.applied_at).toLocaleDateString()}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">Status</span>
-                    <span className={`status-badge status-${application.status}`}>
+                  <p><strong>Proposed Budget:</strong> ${application.proposed_rate || 'Not specified'}</p>
+                  <p><strong>Timeline:</strong> {application.estimated_duration}</p>
+                  <p>
+                    <strong>Status:</strong>
+                    <span className={`status-badge ${application.status}`}>
                       {application.status}
                     </span>
+                  </p>
+                  <p><strong>Applied:</strong> {new Date(application.applied_at).toLocaleDateString()}</p>
+                </div>
+
+                <div className="cover-letter">
+                  <h4>Cover Letter</h4>
+                  <div className="cover-letter-content">
+                    {application.cover_letter}
                   </div>
                 </div>
 
-                {/* Cover Letter */}
-                <div className="cover-letter-section">
+                <div className="application-actions">
                   <button 
-                    className="cover-letter-toggle"
-                    onClick={() => setExpandedApp(expandedApp === application.id ? null : application.id)}
-                  >
-                    <span>📝 Cover Letter</span>
-                    <span className={`toggle-icon ${expandedApp === application.id ? 'expanded' : ''}`}>▼</span>
-                  </button>
-                  {expandedApp === application.id && (
-                    <div className="cover-letter-content">
-                      {application.cover_letter}
-                    </div>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="card-actions">
-                  <button 
-                    className="action-button primary"
+                    className="btn btn-primary"
                     onClick={() => handleAssignProject(application.id)}
                     disabled={application.status !== 'pending'}
                   >
-                    <span>✓</span> Assign Project
+                    {application.status === 'pending' ? 'Assign Project' : 'Already Assigned'}
                   </button>
                   <button 
-                    className="action-button secondary"
+                    className="btn btn-secondary"
                     onClick={() => handleViewProfile(application.developer_email)}
                   >
-                    <span>👤</span> View Profile
+                    View Full Profile
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="empty-state">
-            <div className="empty-icon">📭</div>
-            <h3>No Applications Yet</h3>
-            <p>When developers apply to your project, they'll appear here.</p>
-          </div>
-        )}
+            ))
+          ) : (
+            <div className="empty-state">
+              <p>No applications yet for this project.</p>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 

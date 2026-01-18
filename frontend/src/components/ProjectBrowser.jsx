@@ -6,8 +6,12 @@ import './Dashboard.css'
 const ProjectBrowser = () => {
   const [user, setUser] = useState(null)
   const [projects, setProjects] = useState([])
+  const [filteredProjects, setFilteredProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedProject, setSelectedProject] = useState(null)
+  const [selectedTechStack, setSelectedTechStack] = useState('')
+  const [sortOrder, setSortOrder] = useState('latest')
+  const [allTechStacks, setAllTechStacks] = useState([])
   const [applicationData, setApplicationData] = useState({
     coverLetter: '',
     proposedBudget: '',
@@ -25,6 +29,17 @@ const ProjectBrowser = () => {
         const projectsResult = await getProjects()
         if (projectsResult.projects) {
           setProjects(projectsResult.projects)
+          
+          // Extract all unique tech stacks
+          const techStacks = new Set()
+          projectsResult.projects.forEach(project => {
+            if (project.tech_stack && Array.isArray(project.tech_stack)) {
+              project.tech_stack.forEach(tech => {
+                techStacks.add(tech)
+              })
+            }
+          })
+          setAllTechStacks(Array.from(techStacks).sort())
         }
       } catch (error) {
         console.error('Failed to fetch data:', error)
@@ -35,6 +50,31 @@ const ProjectBrowser = () => {
 
     fetchData()
   }, [])
+
+  // Filter and sort projects
+  useEffect(() => {
+    let filtered = [...projects]
+
+    // Filter by tech stack
+    if (selectedTechStack) {
+      filtered = filtered.filter(project => {
+        if (!project.tech_stack || !Array.isArray(project.tech_stack)) return false
+        return project.tech_stack.some(tech => 
+          tech.toLowerCase().includes(selectedTechStack.toLowerCase()) ||
+          selectedTechStack.toLowerCase().includes(tech.toLowerCase())
+        )
+      })
+    }
+
+    // Sort by date
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.created_at)
+      const dateB = new Date(b.created_at)
+      return sortOrder === 'latest' ? dateB - dateA : dateA - dateB
+    })
+
+    setFilteredProjects(filtered)
+  }, [projects, selectedTechStack, sortOrder])
 
   const formatBudget = (min, max) => {
     if (min === max) return `$${min}`
@@ -81,9 +121,118 @@ const ProjectBrowser = () => {
           <p>Find projects that match your skills</p>
         </div>
 
+        {/* Search and Filter Bar */}
+        <div style={{
+          display: 'flex',
+          gap: '1rem',
+          marginBottom: '2rem',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          flexWrap: 'wrap'
+        }}>
+          {/* Tech Stack Filter */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            <label style={{
+              color: '#fff',
+              fontWeight: '600',
+              fontSize: '0.95rem'
+            }}>
+              Filter by Tech:
+            </label>
+            <select
+              value={selectedTechStack}
+              onChange={(e) => setSelectedTechStack(e.target.value)}
+              style={{
+                padding: '0.75rem 1rem',
+                borderRadius: '8px',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                background: 'rgba(255, 255, 255, 0.08)',
+                color: '#fff',
+                fontWeight: '500',
+                cursor: 'pointer',
+                fontSize: '0.95rem',
+                minWidth: '200px',
+                backdropFilter: 'blur(10px)',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.12)'
+                e.target.style.borderColor = 'rgba(255, 255, 255, 0.3)'
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.08)'
+                e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)'
+              }}
+            >
+              <option value="">All Technologies</option>
+              {allTechStacks.map(tech => (
+                <option key={tech} value={tech}>
+                  {tech}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Sort Filter */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            <label style={{
+              color: '#fff',
+              fontWeight: '600',
+              fontSize: '0.95rem'
+            }}>
+              Sort by:
+            </label>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              style={{
+                padding: '0.75rem 1rem',
+                borderRadius: '8px',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                background: 'rgba(255, 255, 255, 0.08)',
+                color: '#fff',
+                fontWeight: '500',
+                cursor: 'pointer',
+                fontSize: '0.95rem',
+                minWidth: '180px',
+                backdropFilter: 'blur(10px)',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.12)'
+                e.target.style.borderColor = 'rgba(255, 255, 255, 0.3)'
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.08)'
+                e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)'
+              }}
+            >
+              <option value="latest">Latest First</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+          </div>
+
+          {/* Results Count */}
+          <div style={{
+            color: '#a1a1aa',
+            fontSize: '0.9rem',
+            fontWeight: '500'
+          }}>
+            {filteredProjects.length} project{filteredProjects.length !== 1 ? 's' : ''}
+          </div>
+        </div>
+
         <div className="projects-grid">
-          {projects.length > 0 ? (
-            projects.map(project => (
+          {filteredProjects.length > 0 ? (
+            filteredProjects.map(project => (
               <div key={project.id} className="project-card">
                 <h3>{project.title}</h3>
                 <p className="description">{project.description}</p>
@@ -111,7 +260,31 @@ const ProjectBrowser = () => {
             ))
           ) : (
             <div className="empty-state">
-              <p>No projects available at the moment.</p>
+              <p>No projects found matching your filters.</p>
+              {selectedTechStack && (
+                <button
+                  onClick={() => setSelectedTechStack('')}
+                  style={{
+                    marginTop: '1rem',
+                    padding: '0.75rem 1.5rem',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '8px',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'rgba(255, 255, 255, 0.15)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'rgba(255, 255, 255, 0.1)'
+                  }}
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
           )}
         </div>
