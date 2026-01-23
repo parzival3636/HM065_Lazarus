@@ -10,7 +10,21 @@ from django.shortcuts import get_object_or_404
 
 from projects.models import Project, ProjectApplication
 from projects.serializers import ProjectSerializer, ProjectApplicationSerializer
-from projects.matcher import get_matcher
+
+# Try to import fine-tuned matcher, fallback to original if issues
+try:
+    from projects.fine_tuned_matcher import get_fine_tuned_matcher
+    FINE_TUNED_AVAILABLE = True
+    print("✅ Fine-tuned matcher imported successfully")
+except ImportError as e:
+    print(f"⚠️ Fine-tuned matcher import failed: {e}")
+    try:
+        from projects.matcher import get_matcher
+        FINE_TUNED_AVAILABLE = False
+        print("✅ Fallback to original matcher")
+    except ImportError as e2:
+        print(f"❌ Both matchers failed: {e2}")
+        FINE_TUNED_AVAILABLE = None
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
@@ -57,8 +71,27 @@ class ProjectViewSet(viewsets.ModelViewSet):
             )
         
         try:
-            matcher = get_matcher()
-            ranked = matcher.rank_freelancers(project, top_n=5)
+            if FINE_TUNED_AVAILABLE is True:
+                print(f"🎯 Using fine-tuned matcher for project: {project.title} (ID: {project.id})")
+                matcher = get_fine_tuned_matcher()
+                ranked = matcher.rank_freelancers(project, top_n=5)
+                print(f"   Matcher returned {len(ranked)} results")
+            elif FINE_TUNED_AVAILABLE is False:
+                print(f"⚠️ Using original matcher for project: {project.title} (ID: {project.id})")
+                matcher = get_matcher()
+                ranked = matcher.rank_freelancers(project, top_n=5)
+                print(f"   Matcher returned {len(ranked)} results")
+            else:
+                print("❌ No matcher available, using mock data")
+                ranked = [
+                    {
+                        'application_id': 1,
+                        'developer_name': 'Sample Developer',
+                        'overall_score': 85,
+                        'matching_method': 'mock_fallback',
+                        'note': 'Install dependencies to enable real matching'
+                    }
+                ]
             
             return Response({
                 'project_id': project.id,
@@ -102,8 +135,28 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 project=project
             )
             
-            matcher = get_matcher()
-            analysis = matcher.get_match_details(application)
+            if FINE_TUNED_AVAILABLE is True:
+                print("🎯 Using fine-tuned matcher for analysis")
+                matcher = get_fine_tuned_matcher()
+                analysis = matcher.get_match_details(application)
+            elif FINE_TUNED_AVAILABLE is False:
+                print("⚠️ Using original matcher for analysis")
+                matcher = get_matcher()
+                analysis = matcher.get_match_details(application)
+            else:
+                print("❌ No matcher available, using mock analysis")
+                analysis = {
+                    'overall_score': 75,
+                    'matching_method': 'mock_fallback',
+                    'component_scores': {
+                        'skill_match': 80,
+                        'experience_fit': 70,
+                        'portfolio_quality': 75,
+                        'proposal_quality': 80,
+                        'rate_fit': 90
+                    },
+                    'note': 'Install dependencies to enable real matching'
+                }
             
             if analysis is None:
                 return Response(

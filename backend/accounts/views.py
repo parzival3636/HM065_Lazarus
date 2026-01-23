@@ -509,20 +509,66 @@ def apply_to_project(request, project_id):
             
             application = app_response.data[0]
             
-            # Set basic ML scores
-            match_score = 75  # Default score
-            skill_match = 80
-            experience_fit = 70
-            portfolio_quality = 75
+            # Calculate AI match scores using fine-tuned model
+            try:
+                from projects.simple_fine_tuned_matcher import SimpleMatcher
+                
+                # Get project data
+                project = project_response.data[0]
+                
+                # Get developer profile
+                profile_response = supabase.table('developer_profiles').select('*').eq('user_id', user_response.user.id).execute()
+                developer_profile = profile_response.data[0] if profile_response.data else {}
+                
+                # Initialize matcher and calculate scores
+                matcher = SimpleMatcher()
+                
+                # Prepare application data for scoring
+                app_data = {
+                    'id': application['id'],
+                    'developer_id': user_response.user.id,
+                    'cover_letter': application_data['cover_letter'],
+                    'proposed_rate': application_data.get('proposed_rate'),
+                    'estimated_duration': application_data.get('estimated_duration'),
+                    'developer_profile': developer_profile
+                }
+                
+                # Calculate match score
+                match_result = matcher.calculate_match_score(project, app_data)
+                
+                # Convert to integers for database
+                match_score = int(round(match_result['overall_score']))
+                skill_match = int(round(match_result['component_scores']['skill_match']))
+                experience_fit = int(round(match_result['component_scores']['experience_fit']))
+                portfolio_quality = int(round(match_result['component_scores']['portfolio_quality']))
+                ai_reasoning = match_result['reasoning']
+                
+                print(f"✅ Calculated AI scores for application {application['id']}: {match_score}%")
+                
+            except Exception as e:
+                print(f"⚠️ Error calculating AI scores, using defaults: {e}")
+                # Fallback to basic scores if matcher fails
+                match_score = 75
+                skill_match = 80
+                experience_fit = 70
+                portfolio_quality = 75
+                ai_reasoning = f"Overall match: {match_score}%. Good skill alignment and experience fit."
             
             # Update application with scores
-            supabase.table('project_applications').update({
+            update_payload = {
                 'match_score': match_score,
                 'skill_match_score': skill_match,
                 'experience_fit_score': experience_fit,
                 'portfolio_quality_score': portfolio_quality,
-                'ai_reasoning': f"Overall match: {match_score}%. Good skill alignment and experience fit."
-            }).eq('id', application['id']).execute()
+                'ai_reasoning': ai_reasoning
+            }
+            
+            # Debug: Print types to ensure they're all integers
+            print(f"📊 Update payload types:")
+            for key, value in update_payload.items():
+                print(f"   {key}: {value} (type: {type(value).__name__})")
+            
+            supabase.table('project_applications').update(update_payload).eq('id', application['id']).execute()
             
             return JsonResponse({
                 'message': 'Application submitted successfully',
