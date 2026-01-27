@@ -93,8 +93,7 @@ Here are some screenshots showcasing the DevConnect platform:
 ---
 
 ## **🎥 Demo Video**  
-📽️ **[Watch the Demo](https://www.loom.com/share/a008fafc1922428bb8835037fd93b254)**    
-
+📽️ **[Watch the Demo]
 ---
 
 ## **🛠️ Tech Stack & APIs Used**  
